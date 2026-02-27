@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anjali | A GJUST Original</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-color: #141414; /* Netflix Black */
+            --primary: #E50914; /* Netflix Red */
+            --text-main: #FFFFFF;
+            --text-muted: #B3B3B3;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+            overflow-y: hidden; /* Locked until Clapperboard snaps */
+            scroll-behavior: smooth;
+        }
+
+        /* Subtle dark gradient for depth */
+        body::before {
+            content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, #1f1f1f 0%, #141414 100%);
+            z-index: -1; pointer-events: none;
+        }
+
+        /* Hide scrollbar for clean cinematic look */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+
+        /* --- THE CLAPPERBOARD INTRO --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+
+        .clapper-container { cursor: pointer; transition: transform 0.3s ease; }
+        .clapper-container:hover { transform: scale(1.05); }
+
+        .clapper-top {
+            width: 300px; height: 40px;
+            background: repeating-linear-gradient(45deg, #111, #111 20px, #fff 20px, #fff 40px);
+            border-radius: 10px 10px 0 0;
+            transform-origin: left bottom;
+            transform: rotate(-25deg);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid #fff;
+            border-bottom: none;
+        }
+
+        .clapper-bottom {
+            width: 300px; height: 180px;
+            background: #111;
+            border-radius: 0 0 10px 10px;
+            border: 2px solid #fff;
+            padding: 20px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+
+        .clapper-text-main { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 2px; color: var(--text-main); }
+        .clapper-text-sub { font-size: 1rem; color: var(--primary); text-transform: uppercase; letter-spacing: 3px; font-weight: 800; }
+
+        .tap-hint {
+            margin-top: 40px; font-family: 'Montserrat', sans-serif; font-size: 1.2rem;
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 4px; font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+        /* Camera Flash */
+        #flash {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #fff; z-index: 2000; opacity: 0; pointer-events: none;
+            transition: opacity 0.4s ease-out;
+        }
+
+        /* --- MAIN CONTENT (NETFLIX STYLE) --- */
+        #main-content { display: none; padding-bottom: 100px; }
+
+        .hero {
+            height: 100vh; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; text-align: center; padding: 20px;
+            background: linear-gradient(to bottom, transparent 70%, var(--bg-color) 100%);
+        }
+
+        .netflix-logo-text {
+            font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1rem;
+            letter-spacing: 8px; color: var(--primary); text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .hero-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(4rem, 12vw, 8rem);
+            color: var(--text-main);
+            line-height: 0.9; letter-spacing: 2px;
+            text-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        /* --- THE SCENES --- */
+        .story-container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
+
+        .scene {
+            margin-bottom: 120px;
+            opacity: 0; transform: translateY(40px);
+            transition: opacity 1s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+            border-left: 4px solid var(--primary);
+            padding-left: 30px;
+        }
+
+        .scene.visible { opacity: 1; transform: translateY(0); }
+
+        .scene-number {
+            font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem;
+            color: var(--primary); letter-spacing: 2px; margin-bottom: 10px;
+        }
+
+        .scene-title {
+            font-family: 'Montserrat', sans-serif; font-size: 1.8rem; font-weight: 800;
+            color: var(--text-main); margin-bottom: 20px; text-transform: uppercase;
+        }
+
+        .scene-text {
+            font-size: 1.2rem; line-height: 1.8; color: var(--text-muted); font-weight: 400;
+        }
+
+        .scene-text strong { color: var(--text-main); font-weight: 600; }
+
+        /* --- PHOTOS --- */
+        .photo-gallery { display: flex; justify-content: center; flex-wrap: wrap; gap: 20px; margin-top: 30px; }
+
+        .film-frame {
+            background: #222; padding: 10px; border-radius: 4px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5); width: 200px;
+            transition: transform 0.4s ease, z-index 0.4s;
+        }
+
+        .film-frame:hover { transform: scale(1.08); z-index: 10; }
+        .film-frame img { width: 100%; height: 250px; object-fit: cover; border-radius: 2px; filter: contrast(1.1); }
+
+        /* --- INTERACTIVE CAKE FINALE --- */
+        .finale-section { text-align: center; margin-top: 100px; padding: 50px 0; }
+
+        .cake-hint {
+            font-family: 'Montserrat', sans-serif; font-size: 1.2rem; font-weight: 600;
+            color: var(--text-muted); margin-bottom: 50px; text-transform: uppercase; letter-spacing: 2px;
+        }
+
+        .cake-container { display: inline-block; position: relative; cursor: pointer; }
+
+        .netflix-cake {
+            width: 160px; height: 60px;
+            background: #222;
+            border-top: 6px solid var(--primary);
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .candle {
+            width: 12px; height: 40px; background: #fff;
+            position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+            border-radius: 3px;
+        }
+
+        .flame {
+            width: 16px; height: 26px;
+            background: #ffb703;
+            border-radius: 50% 50% 20% 20%;
+            position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+            box-shadow: 0 0 20px #ffb703, 0 0 40px #ffb703;
+            animation: flicker 0.2s infinite alternate;
+            transition: opacity 0.3s ease;
+        }
+
+        @keyframes flicker {
+            0% { transform: translateX(-50%) scale(0.9); }
+            100% { transform: translateX(-50%) scale(1.1); }
+        }
+
+        #final-wish {
+            font-family: 'Bebas Neue', sans-serif; font-size: 4rem; color: var(--primary);
+            margin-top: 40px; opacity: 0; transform: translateY(20px); letter-spacing: 3px;
+            transition: all 1s ease;
+        }
+
+        .show-wish { opacity: 1 !important; transform: translateY(0) !important; }
+
+    </style>
+</head>
+<body>
+
+    <div id="flash"></div>
+
+    <div id="intro-screen">
+        <div class="clapper-container" onclick="snapClapper()">
+            <div class="clapper-top" id="clapper-stick"></div>
+            <div class="clapper-bottom">
+                <div class="clapper-text-main">SCENE 1 : TAKE 1</div>
+                <div class="clapper-text-sub">Anjali's Birthday</div>
+            </div>
+        </div>
+        <div class="tap-hint">Tap to Play</div>
+    </div>
+
+    <div id="main-content">
+        
+        <div class="hero">
+            <div class="netflix-logo-text">A GJUST Original</div>
+            <h1 class="hero-title">HAPPY BIRTHDAY<br>ANJALI</h1>
+        </div>
+
+        <div class="story-container">
+            
+            <div class="scene reveal">
+                <div class="scene-number">Scene 01</div>
+                <div class="scene-title">The Inciting Incident</div>
+                <div class="scene-text">
+                    <p>Every story needs a beginning. Ours started at a competition.</p><br>
+                    <p>You survived Jind, and you survive hostel life daily. That builds character. You are tough.</p><br>
+                    <p>But somehow, even with all that toughness, you still fell victim to my flawless victory in the data collection competition. Okay, fine, <strong>I heavily cheated...</strong> but let's just call it "highly advanced tactical optimization."</p>
+                </div>
+            </div>
+
+            <div class="scene reveal">
+                <div class="scene-number">Scene 02</div>
+                <div class="scene-title">The Action Sequences</div>
+                <div class="scene-text">
+                    <p>After that, we hit the courts, and every movie needs an action hero.</p><br>
+                    <p>Let's establish the facts: I am the absolute, undisputed champion of the badminton court. My athletic prowess is so incredibly elite that <strong>even Virat Kohli would have to take notes.</strong></p><br>
+                    <p>Also, you actively encourage my reckless driving. Normal friends tell the driver to slow down. You? You just love going fast. We are an absolute menace on the roads together.</p>
+                </div>
+            </div>
+
+            <div class="scene reveal">
+                <div class="scene-number">Scene 03</div>
+                <div class="scene-title">The Musical Number</div>
+                <div class="scene-text">
+                    <p>From battling it out over datasets and shuttlecocks, we moved on to those legendary <strong>afternoon Dandiya sessions</strong>.</p><br>
+                    <p>Whether we are trying to win a competition or just messing around at a university event, navigating GJUST wouldn't be anywhere near as amazing without you.</p>
+                </div>
+            </div>
+
+            <div class="scene reveal">
+                <div class="scene-number">Scene 04</div>
+                <div class="scene-title">The Cinematic Universe</div>
+                <div class="scene-text">
+                    <p>It all culminated when we finally went to see <strong>Sunny Sanskari Ki Tulsi Kumari</strong>.</p><br>
+                    <p>That movie basically cemented our status as a full-blown chaotic romcom duo. All the trolling aside, I genuinely value our friendship. It is incredibly rare to find someone who matches my exact chaotic vibe, who I can relentlessly make fun of, but who also has such a truly kind and supportive heart.</p>
+                </div>
+            </div>
+
+            <div class="scene reveal">
+                <div class="scene-number">Scene 05</div>
+                <div class="scene-title">Behind the Scenes</div>
+                <div class="scene-text">
+                    <p style="color: var(--primary); font-weight: 600; font-size: 1.1rem; line-height: 1.6;">
+                        (We literally only have two photos together, so I had to make the absolute most of them. But I also had to include that photo of you in the saree... because you look absolutely amazing in it.)
+                    </p>
+                </div>
+                <div class="photo-gallery">
+                    <div class="film-frame"><img src="photo1.jpg" alt="Us 1"></div>
+                    <div class="film-frame"><img src="photo2.jpg" alt="Us 2"></div>
+                    <div class="film-frame"><img src="saree_pic.jpg" alt="Saree Pic"></div>
+                </div>
+            </div>
+
+            <div class="finale-section reveal">
+                <div class="cake-hint" id="cake-hint">Make a wish & tap the flame</div>
+                
+                <div class="cake-container" onclick="blowCandles()">
+                    <div class="netflix-cake">
+                        <div class="candle">
+                            <div class="flame" id="flame"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="final-wish">HAVE THE BEST BIRTHDAY</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // 1. Clapperboard Snap & Flash
+        function snapClapper() {
+            const stick = document.getElementById('clapper-stick');
+            const intro = document.getElementById('intro-screen');
+            const flash = document.getElementById('flash');
+            const main = document.getElementById('main-content');
+
+            // Snap animation
+            stick.style.transform = 'rotate(0deg)';
+
+            setTimeout(() => {
+                // Flash white
+                flash.style.opacity = '1';
+                
+                setTimeout(() => {
+                    // Switch screens while white
+                    intro.style.display = 'none';
+                    main.style.display = 'block';
+                    document.body.style.overflowY = 'auto'; // Unlock scroll
+                    
+                    // Fade out flash
+                    flash.style.opacity = '0';
+                }, 150);
+            }, 150);
+        }
+
+        // 2. Smooth Cinematic Scroll Reveal
+        const observerOptions = {
+            threshold: 0.15,
+            rootMargin: "0px 0px -50px 0px"
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        setTimeout(() => {
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }, 800);
+
+        // 3. Interactive Cake & Confetti
+        let blown = false;
+        function blowCandles() {
+            if (blown) return;
+            blown = true;
+
+            // Turn off flame
+            document.getElementById('flame').style.opacity = '0';
+            document.getElementById('cake-hint').style.opacity = '0';
+
+            // Show final wish
+            document.getElementById('final-wish').classList.add('show-wish');
+
+            // Fire Netflix-colored confetti (Red, White, Gray)
+            const duration = 4000;
+            const end = Date.now() + duration;
+
+            (function frame() {
+                confetti({
+                    particleCount: 7,
+                    angle: 60,
+                    spread: 70,
+                    origin: { x: 0 },
+                    colors: ['#E50914', '#ffffff', '#555555']
+                });
+                confetti({
+                    particleCount: 7,
+                    angle: 120,
+                    spread: 70,
+                    origin: { x: 1 },
+                    colors: ['#E50914', '#ffffff', '#555555']
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+    </script>
+</body>
+</html>
